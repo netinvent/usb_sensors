@@ -59,14 +59,19 @@ class USBSensor:
         if self._read_light:
             self.led = True
 
-        if command not in ['GI', 'GV', 'GT', 'GH', 'GN', 'GSJON']:
+        if command not in ['GI', 'GV', 'GT', 'GH', 'GP', 'GN', 'GSJON']:
             raise ValueError("Invalid command requested: \"{}\"".format(command))
         try:
             with serial.Serial(self._port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=0.1) as ser:
                 ser.write("{}\r\n".format(command).encode("utf-8"))
                 result = ser.read(size=64).decode("utf-8")
                 self.led = False
-                return result.strip("\r\n")
+
+                result = result.strip("\r\n")
+                if command in ['GT', 'GH', 'GP']:
+                    result = float(result)
+
+                return result
         except serial.SerialException as exc:
             error_message = "Cannot execute read command %s: %s" % (command, exc)
             logger.error(error_message)
