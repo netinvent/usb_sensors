@@ -73,7 +73,7 @@ sensor.led = True
 sensor.led = False
 ```
 
-# Readed led
+# Read led
 Optionally, we can enable the led indicator while reading with:
 ```python
 from usb_sensors import USBSensor
