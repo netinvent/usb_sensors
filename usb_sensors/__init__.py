@@ -5,7 +5,7 @@
 __intname__ = "usb_dogratian_sensors"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2022 Orsiris de Jong - NetInvent SASU"
-__licence__ = "NetInvent CSE"
+__licence__ = 'BSD 3 Clause'
 __version__ = "1.0"
 __build__ = "2022071501"
 
@@ -40,9 +40,9 @@ class USBSensor:
         }
         for port in serial.tools.list_ports.comports():
             if port.vid == int(USB_TNH_VID, 16) and port.pid == int(USB_TNH_PID, 16):
-                _sensor_ports['USB-TnH'].append(port.name)
+                _sensor_ports['USB-TnH'].append(port.device)
             if port.vid == int(USB_PA_VID, 16) and port.pid == int(USB_PA_PID, 16):
-                _sensor_ports['USB-PA'].append(port.name)
+                _sensor_ports['USB-PA'].append(port.device)
         return _sensor_ports
 
     @staticmethod
@@ -68,8 +68,10 @@ class USBSensor:
                 self.led = False
                 return result.strip("\r\n")
         except serial.SerialException as exc:
-            logger.error("Cannot execute command %s: %s" % (command, exc))
+            error_message = "Cannot execute read command %s: %s" % (command, exc)
+            logger.error(error_message)
             self.led = False
+            raise OSError(error_message)
 
     def _write_data(self, command, value):
         # type: (str, str) -> bool
@@ -84,7 +86,11 @@ class USBSensor:
                 logger.error("Command %s failed with result: %s" % (command, result))
                 return False
         except serial.SerialException as exc:
-            logger.error("Cannot execute command %s: %s" % (command, exc))
+            message = "Cannot execute write command %s: %s" % (command, exc)
+            logger.error(message)
+            # Unless we use the led switch, we'll complain
+            if command != 'I':
+                raise OSError(message)
 
     @property
     def model(self):
