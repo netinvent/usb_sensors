@@ -26,14 +26,16 @@ for sensor_port in sensor_ports:
     print(sensor.temperature)
     print(sensor.humidity)
     print(sensor.name)
+    print(sensor.pressure)
+    print(sensor.identification)
 ```
 
 DogRatIan uses USB-TnH (temperature and humidity sensors) as well as USB-PA (temperature, humidity and atmospheric pressure sensors).
 Using `USBSensor.find_sensors()` will return a dictionary structure like:
 ```python
 { 
-   'USB-TnH': ['COM1', 'COM2'],  # or /dev/ttyACM0 alike ports on Linux
-   'USB-PA': ['COM3', 'COM4']
+   'USB-TnH': ['COM1', 'COM2'],  # COMx ports names are Windows specific
+   'USB-PA': ['/dev/ttyACM0', '/dev/ttyACM1']  # /dev/ttyXXXX names are Linux specific
 } 
 ```
 
@@ -58,7 +60,7 @@ for sensor_type, sensor_ports in sensor_dict.items():
 ```
 You can also use `USBSensor.find_tnh_sensors()` or `USBSensor.find_pa_sensors()` which will directly return the list of serial ports for each sensor type.
 
-# Writing data
+# Writing data to the sensor
 
 As DogRatIan suggests, you can set Name sensor to a max 8 char string, and turn on/off led.
 USBSensor class has write methods implemented as setter properties, eg:
@@ -74,7 +76,7 @@ sensor.led = False
 ```
 
 # Read led
-Optionally, we can enable the led indicator while reading with:
+Optionally, we can automatically enable the led indicator while reading with:
 ```python
 from usb_sensors import USBSensor
 
