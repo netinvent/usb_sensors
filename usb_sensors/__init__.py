@@ -16,10 +16,10 @@ import serial.tools.list_ports
 import serial
 
 
-USB_TNH_VID = "0x03EB"
-USB_TNH_PID = "0x2310"
-USB_PA_VID = "0xBADCAFE"  # TODO: Ask DogRatIan what VID:PID USB-PA has
-USB_PA_PID = "0xBADCAFE"
+# DogRatIan USB sensor ID
+USB_VID = "0x03EB"
+USB_PID = "0x2310"
+
 
 SERIAL_SETTINGS = {
     "baudrate": 115200,
@@ -40,25 +40,15 @@ class USBSensor:
 
     @staticmethod
     def find_sensors():
-        # type: () -> Dict[str, List]
-        _sensor_ports = {"USB-TnH": [], "USB-PA": []}
+        # type: () -> List[str]
+        _sensor_ports = []
         for port in serial.tools.list_ports.comports():
-            if port.vid == int(USB_TNH_VID, 16) and port.pid == int(USB_TNH_PID, 16):
-                _sensor_ports["USB-TnH"].append(port.device)
-            if port.vid == int(USB_PA_VID, 16) and port.pid == int(USB_PA_PID, 16):
-                _sensor_ports["USB-PA"].append(port.device)
+            if port.vid == int(USB_VID, 16) and port.pid == int(USB_PID, 16):
+                _sensor_ports.append(port.device)
         return _sensor_ports
 
-    @staticmethod
-    def find_usb_tnh_sensors():
-        return USBSensor.find_sensors()["USB-TnH"]
-
-    @staticmethod
-    def find_usb_pa_sensors():
-        return USBSensor.find_sensors()["USB-PA"]
-
     def _read_data(self, command):
-        # type: (str) -> str
+        # type: (str) -> Optional[str]
 
         if self._read_light:
             self.led = True
@@ -73,9 +63,12 @@ class USBSensor:
             ) as ser:
                 ser.write("{}\r\n".format(command).encode("utf-8"))
                 result = ser.read(size=64).decode("utf-8")
-                result = result.strip("\r\n")
-                if command in ["GT", "GH", "GP"]:
-                    result = float(result)
+                if len(result) == 0:
+                    result = None
+                else:
+                    result = result.strip("\r\n")
+                    if command in ["GT", "GH", "GP"]:
+                        result = float(result)
 
                 # Deactivate light directly here so we reuse current serial handle
                 if self._read_light:
