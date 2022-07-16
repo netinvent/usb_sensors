@@ -1,4 +1,4 @@
-# Dogratian USB-TnH and USB-PA python lib
+# DogRatIan USB-TnH and USB-PA python lib
 
 This library makes usage of https://www.dogratian.com sensors easy
 
@@ -16,7 +16,7 @@ Quick Usage:
 from usb_sensors import USBSensor
 
 # Returns serial port names for every connected DogRatIan device
-sensor_ports = USBSensor.find_tnh_sensors()  # or USBSensor.find_pa_sensors()
+sensor_ports = USBSensor.find_sensors()
 
 # Read data for every sensor on system
 for sensor_port in sensor_ports:
@@ -30,36 +30,35 @@ for sensor_port in sensor_ports:
     print(sensor.identification)
 ```
 
-DogRatIan uses USB-TnH (temperature and humidity sensors) as well as USB-PA (temperature, humidity and atmospheric pressure sensors).
-Using `USBSensor.find_sensors()` will return a dictionary structure like:
-```python
-{ 
-   'USB-TnH': ['COM1', 'COM2'],  # COMx ports names are Windows specific
-   'USB-PA': ['/dev/ttyACM0', '/dev/ttyACM1']  # /dev/ttyXXXX names are Linux specific
-} 
-```
+# Sensor differences
 
-The dictionnary can be used like
+DogRatIan uses USB-TnH (temperature and humidity sensors) as well as USB-PA (temperature, humidity and atmospheric pressure sensors).
+Both sensors are returned by `USBSensor.find_sensors()`.
+
+Every property will work on both sensors, except of `sensor.pressure` which will return None on USB-TnH sensors.
+You can identify a sensor by using `sensor.model` property.
+
+# Basic usage
+
 ```python
 from time import sleep
 from usb_sensors import USBSensor
 
-sensor_dict = USBSensor.find_sensors()
-for sensor_type, sensor_ports in sensor_dict.items():
-    for sensor_port in sensor_ports:
-        print("Found sensor type {} at port {}".format(sensor_type, sensor_port))
-        sensor = USBSensor(sensor_port, read_light=True)
+sensor_ports = USBSensor.find_sensors()
 
-        count = 0
-        while count < 10:
-            print("Current temperature: {}".format(sensor.temperature))
-            print("Current humidity: {}".format(sensor.humidity))
-            sleep(.1)
-            count += 1
+for sensor_port in sensor_ports:
+    print("Found sensor at port {}".format(sensor_port))
+    sensor = USBSensor(sensor_port, read_light=True)
+    print("Sensor model is {}".format(sensor.model))
+
+    count = 0
+    while count < 10:
+        print("Current temperature: {}".format(sensor.temperature))
+        print("Current humidity: {}".format(sensor.humidity))
+        sleep(.1)
+        count += 1
 
 ```
-You can also use `USBSensor.find_tnh_sensors()` or `USBSensor.find_pa_sensors()` which will directly return the list of serial ports for each sensor type.
-
 # Writing data to the sensor
 
 As DogRatIan suggests, you can set Name sensor to a max 8 char string, and turn on/off led.
