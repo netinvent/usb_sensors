@@ -129,6 +129,10 @@ class USBSensor:
         return self._read_data("GH")
 
     @property
+    def humidity(self):
+        return self._read_data("GP")
+
+    @property
     def name(self):
         return self._read_data("GN")
 
