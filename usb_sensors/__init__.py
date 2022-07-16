@@ -21,6 +21,13 @@ USB_TNH_PID = "0x2310"
 USB_PA_VID = "0xBADCAFE"  # TODO: Ask DogRatIan what VID:PID USB-PA has
 USB_PA_PID = "0xBADCAFE"
 
+SERIAL_SETTINGS = {
+    "baudrate": 115200,
+    "bytesize": 8,
+    "parity": "N",
+    "stopbits": 1,
+}
+
 
 logger = getLogger(__name__)
 
@@ -61,25 +68,25 @@ class USBSensor:
         try:
             with serial.Serial(
                 self._port,
-                baudrate=115200,
-                bytesize=8,
-                parity="N",
-                stopbits=1,
                 timeout=0.1,
+                **SERIAL_SETTINGS
             ) as ser:
                 ser.write("{}\r\n".format(command).encode("utf-8"))
                 result = ser.read(size=64).decode("utf-8")
-                self.led = False
-
                 result = result.strip("\r\n")
                 if command in ["GT", "GH", "GP"]:
                     result = float(result)
+
+                # Deactivate light directly here so we reuse current serial handle
+                if self._read_light:
+                    ser.write("{}={}\r\n".format('I', '0').encode("utf-8"))
 
                 return result
         except serial.SerialException as exc:
             error_message = "Cannot execute read command %s: %s" % (command, exc)
             logger.error(error_message)
-            self.led = False
+            if self._read_light:
+                self.led = False
             raise OSError(error_message)
 
     def _write_data(self, command, value):
@@ -89,11 +96,8 @@ class USBSensor:
         try:
             with serial.Serial(
                 self._port,
-                baudrate=115200,
-                bytesize=8,
-                parity="N",
-                stopbits=1,
                 timeout=0.1,
+                **SERIAL_SETTINGS
             ) as ser:
                 ser.write("{}={}\r\n".format(command, value).encode("utf-8"))
                 result = ser.read(size=64).decode("utf-8")
@@ -147,3 +151,14 @@ class USBSensor:
             raise ValueError(
                 "led can only be turned on or off... Do not try to alter reality neo."
             )
+
+    @property
+    def identification(self):
+        return {
+            "model": self.model,
+            "version": self.version,
+            "name": self.name
+        }
+
+    def __str__(self):
+        return str(self.identification)
