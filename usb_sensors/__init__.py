@@ -14,7 +14,12 @@ from typing import Dict, List
 from logging import getLogger
 import serial.tools.list_ports
 import serial
+import json
+from contextlib import contextmanager
+from threading import Lock
 
+
+LOCK = None
 
 # DogRatIan USB sensor ID
 USB_VID = "0x03EB"
@@ -32,11 +37,34 @@ SERIAL_SETTINGS = {
 logger = getLogger(__name__)
 
 
+@contextmanager
+def _with_Lock():
+    # This is a singleton, pylint: disable=global-statement
+    global LOCK
+
+    if LOCK is None:
+        LOCK = Lock()
+
+    LOCK.acquire()
+    yield
+    if LOCK is not None:
+        LOCK.release()
+
+
 class USBSensor:
     def __init__(self, port=None, read_light=False):
         # type: (str, bool) -> None
         self._port = port
         self._read_light = read_light
+        self._location = None  # For easier identification purposes (eg 'mainframe room')
+
+    @property
+    def location(self):
+        return self._location
+
+    @location.setter
+    def location(self, value):
+        self._location = value
 
     @staticmethod
     def find_sensors():
@@ -53,29 +81,27 @@ class USBSensor:
         if self._read_light:
             self.led = True
 
-        if command not in ["GI", "GV", "GT", "GH", "GP", "GN", "GSJON"]:
+        if command not in ["GI", "GV", "GT", "GH", "GP", "GN", "GJSON"]:
             raise ValueError('Invalid command requested: "{}"'.format(command))
         try:
-            with serial.Serial(
-                self._port,
-                timeout=0.1,
-                **SERIAL_SETTINGS
-            ) as ser:
-                ser.write("{}\r\n".format(command).encode("utf-8"))
-                result = ser.read(size=64).decode("utf-8")
-                if len(result) == 0:
-                    result = None
-                else:
-                    result = result.strip("\r\n")
-                    if command in ["GT", "GH", "GP"]:
-                        result = float(result)
-
-                # Deactivate light directly here so we reuse current serial handle
-                if self._read_light:
-                    ser.write("{}={}\r\n".format('I', '0').encode("utf-8"))
-
-                return result
+            with _with_Lock():
+                with serial.Serial(
+                    self._port,
+                    timeout=0.1,
+                    **SERIAL_SETTINGS
+                ) as ser:
+                    ser.write("{}\r\n".format(command).encode("utf-8"))
+                    result = ser.read(size=64).decode("utf-8")
+                    if len(result) == 0:
+                        result = None
+                    else:
+                        result = result.strip("\r\n")
+                    # Deactivate light directly here so we reuse current serial handle
+                    if self._read_light:
+                        ser.write("{}={}\r\n".format('I', '0').encode("utf-8"))
+                    return result
         except serial.SerialException as exc:
+
             error_message = "Cannot execute read command %s: %s" % (command, exc)
             logger.error(error_message)
             if self._read_light:
@@ -87,17 +113,18 @@ class USBSensor:
         if command not in ["N", "I"]:
             raise ValueError('Invalid command requested: "{}"'.format(command))
         try:
-            with serial.Serial(
-                self._port,
-                timeout=0.1,
-                **SERIAL_SETTINGS
-            ) as ser:
-                ser.write("{}={}\r\n".format(command, value).encode("utf-8"))
-                result = ser.read(size=64).decode("utf-8")
-                if result == "OK\n":
-                    return True
-                logger.error("Command %s failed with result: %s" % (command, result))
-                return False
+            with _with_Lock():
+                with serial.Serial(
+                    self._port,
+                    timeout=0.1,
+                    **SERIAL_SETTINGS
+                ) as ser:
+                    ser.write("{}={}\r\n".format(command, value).encode("utf-8"))
+                    result = ser.read(size=64).decode("utf-8")
+                    if result == "OK\n":
+                        return True
+                    logger.error("Command %s failed with result: %s" % (command, result))
+                    return False
         except serial.SerialException as exc:
             message = "Cannot execute write command %s: %s" % (command, exc)
             logger.error(message)
@@ -115,15 +142,41 @@ class USBSensor:
 
     @property
     def temperature(self):
-        return self._read_data("GT")
+        data = self._read_data("GT")
+        try:
+            return float(data)
+        except TypeError:
+            return data
 
     @property
     def humidity(self):
-        return self._read_data("GH")
+        data = float(self._read_data("GH"))
+        try:
+            return float(data)
+        except TypeError:
+            return data
 
     @property
     def pressure(self):
-        return self._read_data("GP")
+        data = float(self._read_data("GP"))
+        try:
+            return float(data)
+        except TypeError:
+            return data
+
+    @property
+    def all(self):
+        data = json.loads(self._read_data("GJSON"))
+        json_output = {}
+        for data_name in ["temperature", "humidity", "pressure"]:
+            data_original_name = data_name[0:1].upper()
+            try:
+                json_output[data_name] = float(data[data_original_name])
+            except TypeError:
+                json_output[data_name] = data[data_original_name]
+            except KeyError:
+                pass
+        return json_output
 
     @property
     def name(self):
