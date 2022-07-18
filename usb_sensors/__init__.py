@@ -56,7 +56,9 @@ class USBSensor:
         # type: (str, bool) -> None
         self._port = port
         self._read_light = read_light
-        self._location = None  # For easier identification purposes (eg 'mainframe room')
+        self._location = (
+            None  # For easier identification purposes (eg 'mainframe room')
+        )
 
     @property
     def location(self):
@@ -85,11 +87,7 @@ class USBSensor:
             raise ValueError('Invalid command requested: "{}"'.format(command))
         try:
             with _with_Lock():
-                with serial.Serial(
-                    self._port,
-                    timeout=0.1,
-                    **SERIAL_SETTINGS
-                ) as ser:
+                with serial.Serial(self._port, timeout=0.1, **SERIAL_SETTINGS) as ser:
                     ser.write("{}\r\n".format(command).encode("utf-8"))
                     result = ser.read(size=64).decode("utf-8")
                     if len(result) == 0:
@@ -98,7 +96,7 @@ class USBSensor:
                         result = result.strip("\r\n")
                     # Deactivate light directly here so we reuse current serial handle
                     if self._read_light:
-                        ser.write("{}={}\r\n".format('I', '0').encode("utf-8"))
+                        ser.write("{}={}\r\n".format("I", "0").encode("utf-8"))
                     return result
         except serial.SerialException as exc:
 
@@ -114,16 +112,14 @@ class USBSensor:
             raise ValueError('Invalid command requested: "{}"'.format(command))
         try:
             with _with_Lock():
-                with serial.Serial(
-                    self._port,
-                    timeout=0.1,
-                    **SERIAL_SETTINGS
-                ) as ser:
+                with serial.Serial(self._port, timeout=0.1, **SERIAL_SETTINGS) as ser:
                     ser.write("{}={}\r\n".format(command, value).encode("utf-8"))
                     result = ser.read(size=64).decode("utf-8")
                     if result == "OK\n":
                         return True
-                    logger.error("Command %s failed with result: %s" % (command, result))
+                    logger.error(
+                        "Command %s failed with result: %s" % (command, result)
+                    )
                     return False
         except serial.SerialException as exc:
             message = "Cannot execute write command %s: %s" % (command, exc)
@@ -204,11 +200,7 @@ class USBSensor:
 
     @property
     def identification(self):
-        return {
-            "model": self.model,
-            "version": self.version,
-            "name": self.name
-        }
+        return {"model": self.model, "version": self.version, "name": self.name}
 
     def __str__(self):
         return str(self.identification)
