@@ -7,10 +7,10 @@ __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2022 Orsiris de Jong - NetInvent SASU"
 __licence__ = "BSD 3 Clause"
 __version__ = "1.0"
-__build__ = "2022071501"
+__build__ = "2022071801"
 
 
-from typing import Dict, List
+from typing import Optional, List
 from logging import getLogger
 import serial.tools.list_ports
 import serial
@@ -62,10 +62,12 @@ class USBSensor:
 
     @property
     def location(self):
+        # type:  () -> str
         return self._location
 
     @location.setter
     def location(self, value):
+        # type:  (str) -> None
         self._location = value
 
     @staticmethod
@@ -130,14 +132,17 @@ class USBSensor:
 
     @property
     def model(self):
+        # type:  () -> str
         return self._read_data("GI")
 
     @property
     def version(self):
+        # type:  () -> str
         return self._read_data("GV")
 
     @property
     def temperature(self):
+        # type:  () -> float
         data = self._read_data("GT")
         try:
             return float(data)
@@ -146,6 +151,7 @@ class USBSensor:
 
     @property
     def humidity(self):
+        # type:  () -> float
         data = float(self._read_data("GH"))
         try:
             return float(data)
@@ -154,6 +160,7 @@ class USBSensor:
 
     @property
     def pressure(self):
+        # type:  () -> float
         data = float(self._read_data("GP"))
         try:
             return float(data)
@@ -162,6 +169,7 @@ class USBSensor:
 
     @property
     def all(self):
+        # type:  () -> dict
         data = json.loads(self._read_data("GJSON"))
         json_output = {}
         for data_name in ["temperature", "humidity", "pressure"]:
@@ -176,6 +184,7 @@ class USBSensor:
 
     @property
     def name(self):
+        # type:  () -> str
         return self._read_data("GN")
 
     @name.setter
@@ -191,6 +200,7 @@ class USBSensor:
 
     @led.setter
     def led(self, value):
+        # type:  (bool) -> None
         if isinstance(value, bool):
             self._write_data("I", "1" if value else "0")
         else:
@@ -200,6 +210,7 @@ class USBSensor:
 
     @property
     def identification(self):
+        # type:  () -> dict
         return {"model": self.model, "version": self.version, "name": self.name}
 
     def __str__(self):
