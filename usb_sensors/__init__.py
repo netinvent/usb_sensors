@@ -61,6 +61,10 @@ class USBSensor:
         )
 
     @property
+    def port(self):
+        return self._port
+
+    @property
     def location(self):
         # type:  () -> str
         return self._location
